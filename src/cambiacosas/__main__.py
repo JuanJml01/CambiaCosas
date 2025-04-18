@@ -1,8 +1,10 @@
 import sys
 import os
 import pathlib
+import tempfile
+import argparse # Add argparse import
 # No longer need json import
-from typing import List, Dict, Optional, Union, Tuple # Add necessary types
+from typing import List, Dict, Optional, Union, Tuple, Any # Add Any for Union return type
 from src.cambiacosas.administracion_archivo.file_info import get_file_info
 from src.cambiacosas.administracion_archivo.edit_file import modify_file_lines
 from src.cambiacosas.googleapi.gemini_options import GeminisOptions
@@ -35,64 +37,229 @@ def scan_folder(folder_path: str) -> list[dict]:
     return file_info_list
 
 
-def process_files_with_gemini(file_info_list: List[Dict], prompt_content: str):
+def process_large_file(file_info: Dict, prompt_content: str, divide: bool) -> Union[str, bool]:
     """
-    Processes each file using the Gemini API based on the provided prompt.
+    Processes a large file (>300 lines).
+    If divide is False, splits into chunks, processes each, combines results, and returns the combined string.
+    If divide is True, splits into chunks, processes each, saves each chunk permanently, and returns True on success, False on failure.
 
     Args:
-        file_info_list (List[Dict]): A list of dictionaries, where each dictionary
-                                     contains file information obtained from get_file_info.
-        prompt_content (str): The content of the prompt to apply to each file.
-    """
-    for file_info in file_info_list:
-        print(f"Processing file: {file_info['full_path']}...")
-        try:
-            # Create GeminisOptions instance (assuming it handles API key loading)
-            gemini_config = GeminisOptions()
+        file_info (Dict): File information ('full_path', 'name', 'content').
+        prompt_content (str): The prompt to apply to each chunk.
+        divide (bool): If True, save chunks as separate files instead of merging.
 
-            # Format input text and set it
-            input_text = f"You are a tool that reads a file, applies the following change — '{prompt_content}' — and rewrites the file with the modification.\n'{file_info['content']}'"
+    Returns:
+        Union[str, bool]: Combined content string if divide is False and successful.
+                          True if divide is True and successful.
+                          An empty string or False if processing fails.
+    """
+
+    lines = file_info['content'].splitlines(keepends=True)
+    chunk_size = 300
+    total_chunks = (len(lines) + chunk_size - 1) // chunk_size
+    modified_chunks_content = []
+    temp_files = []
+    processed_chunk_paths = [] # Keep track of successfully saved permanent chunks if divide=True
+
+    original_path = pathlib.Path(file_info['full_path'])
+    original_name = file_info['name']
+
+    try:
+        for i in range(0, len(lines), chunk_size):
+            chunk_index = i // chunk_size
+            chunk_lines = lines[i:i + chunk_size]
+            chunk_content = "".join(chunk_lines)
+            chunk_num = chunk_index + 1
+
+            print(f"    Processing chunk {chunk_num}/{total_chunks} for {original_name}...")
+
+            # --- Gemini API Call ---
+            gemini_config = GeminisOptions()
+            input_text = f"You are a tool that reads a file, applies the following change — '{prompt_content}' — and rewrites the file with the modification.\n'{chunk_content}'"
             gemini_config.set_input_text(input_text)
 
-            # Call Gemini API
             api_response = call_gemini_api(gemini_config)
             if not api_response:
-                print(f"  Error calling Gemini API for {file_info['name']}.")
-                continue # Skip to next file
+                print(f"    Error calling Gemini API for chunk {chunk_num} of {original_name}.")
+                # If dividing, we should ideally clean up previously saved chunks, but for simplicity, we just fail.
+                return False if divide else ""
 
-            # Parse response (assuming parse_gemini_response extracts the needed text)
-            modified_content = parse_gemini_response(api_response)
-            if not modified_content:
-                 print(f"  Error parsing Gemini response for {file_info['name']}.")
-                 continue # Skip to next file
+            modified_chunk_data = parse_gemini_response(api_response)
+            if not modified_chunk_data:
+                print(f"    Error parsing Gemini response for chunk {chunk_num} of {original_name}.")
+                return False if divide else ""
 
-            # Since modified_content is a dict, extract the text value dynamically.
-            # Assuming the dict contains the response text as its primary value.
-            if isinstance(modified_content, dict) and modified_content:
-                # Get the first value from the dictionary
-                text_content = next(iter(modified_content.values()), None)
-                if text_content is None or not isinstance(text_content, str):
-                    print(f"  Could not extract valid text content from Gemini response dict for {file_info['name']}: {modified_content}")
-                    continue # Skip to next file
+            # Extract text content from response
+            if isinstance(modified_chunk_data, dict) and modified_chunk_data:
+                modified_text = next(iter(modified_chunk_data.values()), None)
+                if modified_text is None or not isinstance(modified_text, str):
+                    print(f"    Invalid text content in Gemini response for chunk {chunk_num} of {original_name}: {modified_chunk_data}")
+                    return False if divide else ""
             else:
-                print(f"  Invalid or empty dictionary received from parse_gemini_response for {file_info['name']}: {modified_content}")
-                continue # Skip to next file
+                 print(f"    Invalid or empty response from parse_gemini_response for chunk {chunk_num} of {original_name}: {modified_chunk_data}")
+                 return False if divide else ""
+            # --- End Gemini API Call ---
 
-            # Rewrite the file using the extracted text content
-            modify_file_lines(file_path=file_info['full_path'], line_range=None, new_content=text_content)
-            print(f"  Successfully modified {file_info['name']}.")
+            if divide:
+                # Save chunk permanently
+                output_filename = f"{original_path.stem}.part{chunk_num}{original_path.suffix}"
+                output_path = original_path.parent / output_filename
+                metadata_header = f"# Original File: {original_name}\n" \
+                                  f"# Part: {chunk_num} / {total_chunks}\n" \
+                                  f"# Prompt Applied: {prompt_content}\n" \
+                                  f"# ---\n"
+                try:
+                    with open(output_path, 'w', encoding='utf-8') as f_out:
+                        f_out.write(metadata_header)
+                        f_out.write(modified_text)
+                    processed_chunk_paths.append(output_path) # Track success
+                    print(f"    Successfully processed and saved chunk {chunk_num} to {output_filename}.")
+                except IOError as e:
+                    print(f"    Error writing permanent chunk file {output_filename}: {e}")
+                    # Clean up already saved chunks for this file? Maybe too complex for now. Fail explicitly.
+                    return False # Indicate failure for divide mode
+            else:
+                # Use temporary file and store content for merging (existing logic)
+                 # Create a temporary file for the chunk (needed for cleanup tracking)
+                 with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt", encoding='utf-8') as temp_f:
+                     # We don't strictly need to write the original chunk here anymore,
+                     # but we need the temp file path for the finally block.
+                     # Let's just keep track of paths without writing.
+                     temp_path = temp_f.name
+                     temp_files.append(temp_path) # Keep track for cleanup
+
+                 modified_chunks_content.append(modified_text)
+                 print(f"    Successfully processed chunk {chunk_num}.")
+
+        # --- Loop finished ---
+        if divide:
+            # If we got here, all chunks were processed and saved successfully
+            return True
+        else:
+            # Combine modified chunks
+            return "".join(modified_chunks_content)
+
+    except Exception as e:
+        print(f"    An error occurred during large file processing for {original_name}: {e}")
+        return False if divide else "" # Indicate failure
+    finally:
+        # Clean up temporary files ONLY if not dividing
+        if not divide:
+            for temp_path in temp_files:
+                try:
+                    os.remove(temp_path)
+                except OSError as e:
+                    print(f"    Warning: Could not remove temporary file {temp_path}: {e}")
+
+def process_files_with_gemini(file_info_list: List[Dict], prompt_content: str, divide: bool):
+    """
+    Processes each file using the Gemini API. Handles large files by chunking.
+    If divide is True, large files are split into permanent chunk files and the original is deleted on success.
+
+    Args:
+        file_info_list (List[Dict]): List of file info dictionaries.
+        prompt_content (str): The prompt to apply.
+        divide (bool): Whether to divide large files into permanent chunks.
+    """
+    for file_info in file_info_list:
+        original_file_path = file_info['full_path'] # Store for potential deletion
+        original_file_name = file_info['name']
+        print(f"Processing file: {original_file_path}...")
+        try:
+            # Check the number of lines in the file
+            line_count = len(file_info['content'].splitlines())
+            text_content = "" # Initialize text_content for non-divide case
+            process_as_large_file = line_count > 300
+            skip_final_write = False # Flag to skip writing if dividing
+
+            if process_as_large_file:
+                print(f"  File {original_file_name} has {line_count} lines, exceeding 300 lines. Processing in chunks...")
+                # Call process_large_file with the divide flag
+                large_file_result = process_large_file(file_info, prompt_content, divide)
+
+                if divide:
+                    if large_file_result is True:
+                        print(f"  Successfully processed and divided large file {original_file_name} into chunks.")
+                        skip_final_write = True # Don't rewrite original
+                        # Try deleting the original file
+                        try:
+                            os.remove(original_file_path)
+                            print(f"  Successfully deleted original large file: {original_file_name}")
+                        except OSError as e:
+                            print(f"  Warning: Could not delete original large file {original_file_name}: {e}")
+                        # Successfully divided, continue to next file in the list
+                        continue
+                    else: # large_file_result is False
+                        print(f"  Failed to process and divide large file {original_file_name}.")
+                        continue # Skip to next file
+                else: # Not dividing, expect combined content string
+                    # Check if the result is a non-empty string (success)
+                    if isinstance(large_file_result, str) and large_file_result:
+                         text_content = large_file_result # Use the combined content
+                    else: # Result is empty string "" (failure)
+                        print(f"  Failed to process large file {original_file_name} for merging.")
+                        continue # Skip to next file
+
+            else: # Process normally for files <= 300 lines
+                # Create GeminisOptions instance
+                gemini_config = GeminisOptions()
+
+                # Format input text and set it
+                input_text = f"You are a tool that reads a file, applies the following change — '{prompt_content}' — and rewrites the file with the modification.\n'{file_info['content']}'"
+                gemini_config.set_input_text(input_text)
+
+                # Call Gemini API
+                api_response = call_gemini_api(gemini_config)
+                if not api_response:
+                    print(f"  Error calling Gemini API for {file_info['name']}.")
+                    continue # Skip to next file
+
+                # Parse response
+                modified_content_data = parse_gemini_response(api_response)
+                if not modified_content_data:
+                    print(f"  Error parsing Gemini response for {file_info['name']}.")
+                    continue # Skip to next file
+
+                # Extract text content from response dict
+                if isinstance(modified_content_data, dict) and modified_content_data:
+                    extracted_text = next(iter(modified_content_data.values()), None)
+                    if extracted_text is None or not isinstance(extracted_text, str):
+                        print(f"  Could not extract valid text content from Gemini response dict for {file_info['name']}: {modified_content_data}")
+                        continue # Skip to next file
+                    text_content = extracted_text # Assign extracted text
+                else:
+                    print(f"  Invalid or empty dictionary received from parse_gemini_response for {file_info['name']}: {modified_content_data}")
+                    continue # Skip to next file
+
+            # --- End of if/else for large/small file processing ---
+
+            # Write the final modified content back to the original file
+            # This should only happen if we are NOT dividing a large file.
+            if not skip_final_write:
+                if text_content: # Ensure we have content to write (from small file or merged large file)
+                    modify_file_lines(file_path=original_file_path, line_range=None, new_content=text_content)
+                    print(f"  Successfully modified {original_file_name}.")
+                else:
+                    # This case implies an issue occurred in small file processing or merging large file
+                    # (or large file processing failed before setting text_content)
+                    if not process_as_large_file: # Only print if it wasn't a large file failure (already logged)
+                        print(f"  No valid content generated for {original_file_name}, skipping modification.")
 
         except Exception as e:
-            print(f"  An error occurred while processing {file_info['name']}: {e}")
+            print(f"  An error occurred while processing {original_file_name}: {e}")
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python -m cambiacosas <folder_name> <prompt_file>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Process files using Gemini API, with optional chunking for large files.")
+    parser.add_argument("folder_name", help="Path to the folder containing files to process.")
+    parser.add_argument("prompt_file", help="Path to the file containing the processing prompt.")
+    parser.add_argument("--divide", action="store_true", help="Divide large files (>300 lines) into separate processed chunk files instead of merging.")
 
-    folder_name = sys.argv[1]
-    prompt_file_path = sys.argv[2] # Renamed for clarity
+    args = parser.parse_args()
+
+    folder_name = args.folder_name
+    prompt_file_path = args.prompt_file
+    divide_flag = args.divide
 
     # Read prompt file content
     try:
@@ -114,7 +281,7 @@ def main():
 
         if file_info_results:
              print("Processing files with Gemini...")
-             process_files_with_gemini(file_info_results, prompt_content) # Call the new function
+             process_files_with_gemini(file_info_results, prompt_content, divide_flag) # Pass the divide flag
              print("Finished processing files.")
         else:
              print("No files found to process.")
