@@ -73,31 +73,3 @@ def parse_gemini_response(json_response):
    except (TypeError, ValueError, KeyError) as e:
        print(f"Error parsing Gemini response: {e}")
        return None
-
-if __name__ == '__main__':
-    # Ejemplo de uso
-    fragmented_json_response = [
-        {'candidates': [{'content': {'parts': [{'text': '{'}], 'role': 'model'}}], 'usageMetadata': {'promptTokenCount': 10, 'totalTokenCount': 10, 'promptTokensDetails': [{'modality': 'TEXT', 'tokenCount': 10}]}, 'modelVersion': 'gemini-2.0-flash'},
-        {'candidates': [{'content': {'parts': [{'text': '\n  "'}], 'role': 'model'}}], 'usageMetadata': {'promptTokenCount': 10, 'totalTokenCount': 10, 'promptTokensDetails': [{'modality': 'TEXT', 'tokenCount': 10}]}, 'modelVersion': 'gemini-2.0-flash'},
-        {'candidates': [{'content': {'parts': [{'text': 'response": "Pale orb in velvet skies,\\nA silent watch with watchful eyes.\\n'}], 'role': 'model'}}], 'usageMetadata': {'promptTokenCount': 10, 'totalTokenCount': 10, 'promptTokensDetails': [{'modality': 'TEXT', 'tokenCount': 10}]}, 'modelVersion': 'gemini-2.0-flash'},
-        {'candidates': [{'content': {'parts': [{'text': 'Silver beams on sleeping land,\\nA gentle touch, a helping hand."\n}'}], 'role': 'model'}, 'finishReason': 'STOP'}], 'usageMetadata': {'promptTokenCount': 12, 'candidatesTokenCount': 37, 'totalTokenCount': 49, 'promptTokensDetails': [{'modality': 'TEXT', 'tokenCount': 12}], 'candidatesTokensDetails': [{'modality': 'TEXT', 'tokenCount': 37}]}, 'modelVersion': 'gemini-2.0-flash'}
-    ]
-
-    parsed_response = parse_gemini_response(fragmented_json_response)
-    print("Parsed Response:", parsed_response)
-    # Example usage (for testing)
-    try:
-        gemini_options = GeminisOptions() # Carga las opciones por defecto, y la clave API del entorno
-        gemini_options.set_input_text("Escribe un poema corto sobre la luna.")
-
-        api_response = call_gemini_api(gemini_options)
-        sd = parse_gemini_response(api_response)
-        print(sd)
-        print(type(sd))
-
-    except GeminiOptionsError as e:
-        print(f"Gemini Options Error: {e}")
-    except requests.exceptions.RequestException as e:
-        print(f"API Request Error: {e}")
-    except Exception as e:
-        print(f"Unexpected Error: {e}")

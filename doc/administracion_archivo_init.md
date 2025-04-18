@@ -1,27 +1,27 @@
-# Documentation for `__init__.py` in `src/cambiacosas/administracion_archivo/`
+# Documentación para `__init__.py` en `src/cambiacosas/administracion_archivo/`
 
-## File: `__init__.py`
+## Archivo: `__init__.py`
 
-This file is located in the `src/cambiacosas/administracion_archivo/` directory and serves as an initialization file for the `administracion_archivo` package.
+Este archivo se encuentra en el directorio `src/cambiacosas/administracion_archivo/` y sirve como un archivo de inicialización para el paquete `administracion_archivo`.
 
-### Purpose:
+### Propósito:
 
--   **Package Initialization:** In Python, the `__init__.py` file is used to mark directories as Python packages. When a directory contains an `__init__.py` file, Python recognizes it as a package, allowing you to import modules and subpackages from it.
--   **Namespace Definition:** It defines the namespace for the package. This means that when you import the package, the symbols defined in `__init__.py` (if any) become available directly under the package name.
--   **Module Import Control:**  `__init__.py` can be used to control which modules and subpackages are imported when the package is imported using a wildcard (`from package import *`).
--   **Setup Code:** It can contain initialization code that should be executed when the package is first imported. This might include setting up logging, initializing variables, or performing other setup tasks.
+-   **Inicialización de Paquete:** En Python, el archivo `__init__.py` se utiliza para marcar directorios como paquetes de Python. Cuando un directorio contiene un archivo `__init__.py`, Python lo reconoce como un paquete, permitiéndote importar módulos y subpaquetes desde él.
+-   **Definición de Espacio de Nombres:** Define el espacio de nombres para el paquete. Esto significa que cuando importas el paquete, los símbolos definidos en `__init__.py` (si los hay) se vuelven disponibles directamente bajo el nombre del paquete.
+-   **Control de Importación de Módulos:** `__init__.py` puede ser utilizado para controlar qué módulos y subpaquetes son importados cuando el paquete es importado utilizando un comodín (`from package import *`).
+-   **Código de Configuración:** Puede contener código de inicialización que debería ser ejecutado cuando el paquete es importado por primera vez. Esto podría incluir la configuración de logging, la inicialización de variables, o la realización de otras tareas de configuración.
 
-### Content:
+### Contenido:
 
-Currently, this `__init__.py` file is empty. This is common when the primary purpose of the file is simply to mark the directory as a package, and no specific initialization code or namespace definitions are needed at the package level.
+Actualmente, este archivo `__init__.py` está vacío. Esto es común cuando el propósito principal del archivo es simplemente marcar el directorio como un paquete, y no se necesita código de inicialización específico o definiciones de espacio de nombres a nivel de paquete.
 
-### Usage:
+### Uso:
 
-Even though it is empty, its presence is crucial for Python to recognize `src/cambiacosas/administracion_archivo/` as a package. You can import modules from this package in other parts of your code:
+Aunque esté vacío, su presencia es crucial para que Python reconozca `src/cambiacosas/administracion_archivo/` como un paquete. Puedes importar módulos desde este paquete en otras partes de tu código:
 
 ```python
 from src.cambiacosas.administracion_archivo import file_info
 from src.cambiacosas.administracion_archivo import edit_file
 ```
 
-In this case, `__init__.py` ensures that `file_info` and `edit_file` modules within the `administracion_archivo` directory can be correctly imported and used as part of the package.
+En este caso, `__init__.py` asegura que los módulos `file_info` y `edit_file` dentro del directorio `administracion_archivo` puedan ser correctamente importados y utilizados como parte del paquete.

@@ -1,44 +1,29 @@
-# Documentation for `main` function in `__main__.py`
-
-## Function: `main()`
-
-This is the main function of the `cambiacosas` tool. It parses command line arguments and executes the tool's logic.
-
-### Parameters:
-
-This function does not take any parameters directly. It reads command line arguments passed to the script.
-
--   `sys.argv[1]` (str): The first command line argument.
--   `sys.argv[2]` (str): The second command line argument.
-
-### Returns:
-
-This function does not return any value directly. It prints output to the console and exits with a status code.
-
--   Prints usage instructions to standard output if the number of arguments is incorrect.
--   Prints the values of `arg1` and `arg2` to standard output.
--   Prints a placeholder message "Tool logic to be implemented..." indicating where the main tool logic should be added.
--   Exits with a status code of 1 if the number of arguments is incorrect, and 0 otherwise (implicitly, if it reaches the end of execution).
-
-### Usage:
-
-Run the tool from the command line with two arguments:
-
+# Documentación para la función `main` en `__main__.py`
+## Función: `main()`
+Esta es la función principal de la herramienta `cambiacosas`. Analiza los argumentos de línea de comandos y ejecuta la lógica de la herramienta.
+### Parámetros:
+Esta función no toma ningún parámetro directamente. Lee los argumentos de línea de comandos pasados al script.
+-   `sys.argv[1]` (str): El primer argumento de línea de comandos.
+-   `sys.argv[2]` (str): El segundo argumento de línea de comandos.
+### Retorna:
+Esta función no devuelve ningún valor directamente. Imprime la salida a la consola y sale con un código de estado.
+-   Imprime instrucciones de uso a la salida estándar si el número de argumentos es incorrecto.
+-   Imprime los valores de `arg1` y `arg2` a la salida estándar.
+-   Imprime un mensaje de marcador de posición "Lógica de la herramienta a implementar..." indicando dónde se debe agregar la lógica principal de la herramienta.
+-   Sale con un código de estado 1 si el número de argumentos es incorrecto, y 0 de lo contrario (implícitamente, si llega al final de la ejecución).
+### Uso:
+Ejecute la herramienta desde la línea de comandos con dos argumentos:
 ```bash
 python -m cambiacosas <argument_1> <argument_2>
 ```
-
-Replace `<argument_1>` and `<argument_2>` with the desired arguments for the tool.
-
-### Example:
-
+Reemplace `<argument_1>` y `<argument_2>` con los argumentos deseados para la herramienta.
+### Ejemplo:
 ```bash
-python -m cambiacosas hello world
+python -m cambiacosas hola mundo
 ```
-
-**Expected Output:**
-
+**Salida Esperada:**
 ```
-Argument 1: hello
-Argument 2: world
-Tool logic to be implemented...
+Argumento 1: hola
+Argumento 2: mundo
+Lógica de la herramienta a implementar...
+```
