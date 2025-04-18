@@ -1,6 +1,6 @@
 # src/cambiacosas/googleapi/api_client.py  (ES)
 import requests
-from src.cambiacosas.googleapi.gemini_options import GeminisOptions, GeminiOptionsError, GeminiAPIKeyError
+from .gemini_options import GeminisOptions, GeminiOptionsError
 
 def call_gemini_api(gemini_config):
     """

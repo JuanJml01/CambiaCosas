@@ -1,5 +1,5 @@
 from typing import Union, List, Tuple, Optional
-from src.cambiacosas.administracion_archivo import file_info
+from . import file_info
 
 def modify_file_lines(file_path: str, line_range: Optional[Union[Tuple[int, int], slice]], new_content: Union[str, List[str]]):
     """

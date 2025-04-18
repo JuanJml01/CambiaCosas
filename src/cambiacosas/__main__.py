@@ -5,10 +5,10 @@ import tempfile
 import argparse 
 
 from typing import List, Dict, Union
-from src.cambiacosas.administracion_archivo.file_info import get_file_info
-from src.cambiacosas.administracion_archivo.edit_file import modify_file_lines
-from src.cambiacosas.googleapi.gemini_options import GeminisOptions
-from src.cambiacosas.googleapi.api_client import call_gemini_api, parse_gemini_response
+from .administracion_archivo.file_info import get_file_info
+from .administracion_archivo.edit_file import modify_file_lines
+from .googleapi.gemini_options import GeminisOptions
+from .googleapi.api_client import call_gemini_api, parse_gemini_response
 
 
 def scan_folder(folder_path: str) -> list[dict]:

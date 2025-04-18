@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cambiacosas"
-version = "0.1.1"
+version = "0.1.2"
 description = "Una herramienta para procesar archivos utilizando la API de Gemini, aplicando modificaciones basadas en un mensaje (prompt) proporcionado."
 readme = "README.md"
 authors = [
